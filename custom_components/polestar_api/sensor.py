@@ -187,7 +187,7 @@ POLESTAR_SENSOR_TYPES: Final[tuple[PolestarSensorDescription, ...]] = (
         field_name="estimatedChargingTimeToFullMinutes",
         native_unit_of_measurement=UnitOfTime.MINUTES,
         round_digits=None,
-        max_value=1500,
+        max_value=None,
         dict_data=None
     ),
     PolestarSensorDescription(
@@ -224,7 +224,7 @@ POLESTAR_SENSOR_TYPES: Final[tuple[PolestarSensorDescription, ...]] = (
         round_digits=None,
         max_value=None,
         state_class=SensorStateClass.MEASUREMENT,
-        device_class=SensorDeviceClass.POWER,
+        device_class=SensorDeviceClass.CURRENT,
         dict_data=None
     ),
     PolestarSensorDescription(
@@ -236,7 +236,6 @@ POLESTAR_SENSOR_TYPES: Final[tuple[PolestarSensorDescription, ...]] = (
         native_unit_of_measurement=None,
         round_digits=None,
         max_value=None,
-        state_class=SensorStateClass.MEASUREMENT,
         device_class=None,
         dict_data=CHARGING_CONNECTION_STATUS_DICT
     ),
@@ -410,7 +409,29 @@ POLESTAR_SENSOR_TYPES: Final[tuple[PolestarSensorDescription, ...]] = (
     ),
     PolestarSensorDescription(
         key="api_status_code",
-        name="API Status",
+        name="API Status Code V1",
+        icon="mdi:heart",
+        query=None,
+        field_name=None,
+        native_unit_of_measurement=None,
+        round_digits=None,
+        max_value=None,
+        dict_data=API_STATUS_DICT
+    ),
+    PolestarSensorDescription(
+        key="api_status_code_v2",
+        name="API Status Code V2",
+        icon="mdi:heart",
+        query=None,
+        field_name=None,
+        native_unit_of_measurement=None,
+        round_digits=None,
+        max_value=None,
+        dict_data=API_STATUS_DICT
+    ),
+    PolestarSensorDescription(
+        key="api_status_code_auth",
+        name="Auth API Status Code",
         icon="mdi:heart",
         query=None,
         field_name=None,
@@ -421,8 +442,8 @@ POLESTAR_SENSOR_TYPES: Final[tuple[PolestarSensorDescription, ...]] = (
     ),
     PolestarSensorDescription(
         key="api_token_expires_at",
-        name="API Token Expired At",
-        icon="mdi:heart",
+        name="Auth Token Expired At",
+        icon="mdi:clock-time-eight",
         query=None,
         field_name=None,
         native_unit_of_measurement=None,
@@ -543,15 +564,18 @@ class PolestarSensor(PolestarEntity, SensorEntity):
     @property
     def state(self) -> StateType:
         """Return the state of the sensor."""
-        if self._attr_native_value is None and self.entity_description.key in ('charging_current', 'charging_power', 'estimated_charging_time_minutes_to_target_distance'):
+        if self._attr_native_value is None and self.entity_description.key in ('estimated_charging_time_minutes_to_target_distance'):
             #self.entity_description.native_unit_of_measurement = None
             self._attr_native_unit_of_measurement = None
             return "Not Supported Yet"
 
         if self.entity_description.dict_data is not None:
-            # exception for api_status_code
             if self.entity_description.key == 'api_status_code':
-                return self.entity_description.dict_data.get(self._device.get_latest_call_code(), "Error")
+                return self.entity_description.dict_data.get(self._device.get_latest_call_code_v1(), "Error")
+            elif self.entity_description.key == 'api_status_code_v2':
+                return self.entity_description.dict_data.get(self._device.get_latest_call_code_v2(), "Error")
+            elif self.entity_description.key == 'api_status_code_auth':
+                return self.entity_description.dict_data.get(self._device.get_latest_call_code_auth(), "Error")
             self._attr_native_value  =  self.entity_description.dict_data.get(
                 self._attr_native_value, self._attr_native_value)
 
@@ -623,8 +647,8 @@ class PolestarSensor(PolestarEntity, SensorEntity):
         # prevent exponentianal value, we only give state value that is lower than the max value
         if self.entity_description.max_value is not None:
             if isinstance(self._sensor_data, str):
-                self._attr_native_value = int(self._attr_native_value)
-            if self._sensor_data > self.entity_description.max_value:
+                self._attr_native_value = int(self._sensor_data)
+            if self._attr_native_value > self.entity_description.max_value:
                 _LOGGER.warning("%s: Value %s is higher than max value %s", self.entity_description.key, self._attr_native_value, self.entity_description.max_value)
                 return None
 
