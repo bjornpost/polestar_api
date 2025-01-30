@@ -1,30 +1,39 @@
 """Base class for Polestar entities."""
-import logging
 
-from homeassistant.helpers.entity import DeviceInfo, Entity
+from __future__ import annotations
 
-from .const import DOMAIN as POLESTAR_API_DOMAIN
-from .polestar import Polestar
+from typing import TYPE_CHECKING
 
-_LOGGER = logging.getLogger(__name__)
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import ATTRIBUTION, DOMAIN
+from .coordinator import PolestarCoordinator
+
+if TYPE_CHECKING:
+    from homeassistant.helpers.entity import EntityDescription
 
 
-class PolestarEntity(Entity):
+class PolestarEntity(CoordinatorEntity[PolestarCoordinator]):
     """Base class for Polestar entities."""
 
-    def __init__(self, device: Polestar) -> None:
+    _attr_attribution = ATTRIBUTION
+
+    def __init__(
+        self, coordinator: PolestarCoordinator, entity_description: EntityDescription
+    ) -> None:
         """Initialize the Polestar entity."""
-        self._device = device
-
-        self._attr_device_info = DeviceInfo(
-            identifiers={(POLESTAR_API_DOMAIN, self._device.name)},
-            manufacturer="Polestar",
-            model=None,
-            name=device.name,
-            sw_version=None,
+        super().__init__(coordinator)
+        self.entity_description = entity_description
+        self.entity_id = (
+            f"{DOMAIN}.polestar_{coordinator.get_short_id()}_{entity_description.key}"
         )
-
-    async def async_added_to_hass(self) -> None:
-        """Add listener for state changes."""
-        await super().async_added_to_hass()
-
+        self._attr_unique_id = f"polestar_{coordinator.vin}_{entity_description.key}"
+        self._attr_translation_key = f"polestar_{entity_description.key}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self.coordinator.vin)},
+            manufacturer="Polestar",
+            model=self.coordinator.model,
+            name=self.coordinator.name,
+            serial_number=self.coordinator.vin,
+        )
