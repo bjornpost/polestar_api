@@ -8,9 +8,9 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/pypolestar/polestar_api/issues",
   "requirements": [
-    "pypolestar==1.7.2",
+    "pypolestar @ git+https://github.com/bjornpost/pypolestar@main",
     "gql[httpx]>=3.5.0",
-    "homeassistant>=2025.3.0"
+    "homeassistant>=2024.12.4"
   ],
-  "version": "1.16.1"
+  "version": "2.0"
 }
